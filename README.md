@@ -1,4 +1,6 @@
 # sneaker
+![test](https://github.com/terakoya76/sneaker/workflows/test/badge.svg)
+
 Cron execution schedule visualizer
 
 ## How to use
