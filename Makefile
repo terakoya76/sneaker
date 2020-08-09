@@ -14,5 +14,5 @@ lint:
 		-E stylecheck \
 		-E unparam
 
-test:
+test: lint
 	go test -race -v ./...
