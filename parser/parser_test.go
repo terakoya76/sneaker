@@ -7,20 +7,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	crontab string = `
-# comment
-5 0 * * * taskA
-
-10 0 * * * taskB
-
-30 18 * * * taskC
-
-7,27,47 23,0-7 * * * taskD
-`
-)
-
 func TestParseCrontab(t *testing.T) {
+	crontab := `
+# comment
+* * * * * taskA
+
+10 0 20 * * taskB
+
+*/5 */10 */3 * * taskC
+
+7,27,47 23,0-7 10,20,30 * * taskD
+`
+
 	cases := []struct {
 		name     string
 		str      string
@@ -32,33 +30,36 @@ func TestParseCrontab(t *testing.T) {
 			str:  crontab,
 			expected: []*Expression{
 				{
-					min:   "5",
-					hour:  "0",
+					min:   "*",
+					hour:  "*",
 					day:   "*",
 					month: "*",
 					wday:  "*",
 					cmd:   "taskA",
 				},
+
 				{
 					min:   "10",
 					hour:  "0",
-					day:   "*",
+					day:   "20",
 					month: "*",
 					wday:  "*",
 					cmd:   "taskB",
 				},
+
 				{
-					min:   "30",
-					hour:  "18",
-					day:   "*",
+					min:   "*/5",
+					hour:  "*/10",
+					day:   "*/3",
 					month: "*",
 					wday:  "*",
 					cmd:   "taskC",
 				},
+
 				{
 					min:   "7,27,47",
 					hour:  "23,0-7",
-					day:   "*",
+					day:   "10,20,30",
 					month: "*",
 					wday:  "*",
 					cmd:   "taskD",
@@ -84,58 +85,72 @@ func TestEvaluate(t *testing.T) {
 		err      error
 	}{
 		{
-			name: "every xx:05",
+			name: "every *:* on */*",
 			exp: &Expression{
-				min:   "5",
+				min:   "*",
 				hour:  "*",
 				day:   "*",
 				month: "*",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: everyNHourSched(5),
+			expected: everyMinEveryHourEveryDaySched(1, 1, 1),
 			err:      nil,
 		},
 
 		{
-			name: "every 5min",
+			name: "every */4:*/5 on * */10",
 			exp: &Expression{
 				min:   "*/5",
-				hour:  "*",
-				day:   "*",
+				hour:  "*/4",
+				day:   "*/10",
 				month: "*",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: everyNMinSched(5),
+			expected: everyMinEveryHourEveryDaySched(5, 4, 10),
 			err:      nil,
 		},
 
 		{
-			name: "every 5min on 07:xx",
+			name: "each 07,08,09:10,11,12 on * 20,21,22",
 			exp: &Expression{
-				min:   "*/5",
-				hour:  "7",
-				day:   "*",
+				min:   "10,11,12",
+				hour:  "7,8,9",
+				day:   "20,21,22",
 				month: "*",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: specNHourEveryMMinSched(7, 5),
+			expected: specMinsSpecHoursSpecDaysSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}),
 			err:      nil,
 		},
 
 		{
-			name: "every 07:05",
+			name: "each 07,08,09:10,11,12 on * 20,21,22",
+			exp: &Expression{
+				min:   "10-12",
+				hour:  "7-9",
+				day:   "20-22",
+				month: "*",
+				wday:  "*",
+				cmd:   "task",
+			},
+			expected: specMinsSpecHoursSpecDaysSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}),
+			err:      nil,
+		},
+
+		{
+			name: "every 07:05 on * 1",
 			exp: &Expression{
 				min:   "5",
 				hour:  "7",
-				day:   "*",
+				day:   "1",
 				month: "*",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: specNHourSpecMMinSched(7, 5),
+			expected: specMinSpecHourSpecDaySched(5, 7, 1),
 			err:      nil,
 		},
 	}
@@ -150,40 +165,20 @@ func TestEvaluate(t *testing.T) {
 		if !assert.Equal(t, c.expected, actual) {
 			t.Errorf("case: %s is failed, expected: %+v, actual: %+v\n", c.name, c.expected, actual)
 		}
-
-		t.Log(actual)
 	}
 }
 
-func everyNHourSched(n int) ExecutionSchedule {
+func everyMinEveryHourEveryDaySched(min, hour, day int) ExecutionSchedule {
 	s := InitSchedule()
-	for _, h := range s {
-		h[n] = true
-	}
-
-	return s
-}
-
-func everyNMinSched(n int) ExecutionSchedule {
-	s := InitSchedule()
-	for _, h := range s {
-		for m := range h {
-			if m%n == 0 {
-				h[m] = true
-			}
-		}
-	}
-
-	return s
-}
-
-func specNHourEveryMMinSched(n, m int) ExecutionSchedule {
-	s := InitSchedule()
-	for i, h := range s {
-		if i == n {
-			for j := range h {
-				if j%m == 0 {
-					h[j] = true
+	for k, d := range s {
+		if k%day == 0 {
+			for j, h := range d {
+				if j%hour == 0 {
+					for i := range h {
+						if i%min == 0 {
+							s[k][j][i] = true
+						}
+					}
 				}
 			}
 		}
@@ -192,15 +187,41 @@ func specNHourEveryMMinSched(n, m int) ExecutionSchedule {
 	return s
 }
 
-func specNHourSpecMMinSched(n, m int) ExecutionSchedule {
+func specMinsSpecHoursSpecDaysSched(mins, hours, days []int) ExecutionSchedule {
 	s := InitSchedule()
-	for i, h := range s {
-		if i == n {
-			h[m] = true
+
+	for k, d := range s {
+		if contain(days, k) {
+			for j, h := range d {
+				if contain(hours, j) {
+					for i := range h {
+						if contain(mins, i) {
+							s[k][j][i] = true
+						}
+					}
+				}
+			}
 		}
 	}
 
 	return s
+}
+
+func specMinSpecHourSpecDaySched(min, hour, day int) ExecutionSchedule {
+	s := InitSchedule()
+	s[day][hour][min] = true
+
+	return s
+}
+
+func contain(a []int, b int) bool {
+	for _, item := range a {
+		if b == item {
+			return true
+		}
+	}
+
+	return false
 }
 
 func TestEvaluateItem(t *testing.T) {
@@ -213,7 +234,7 @@ func TestEvaluateItem(t *testing.T) {
 	}{
 		{
 			name: "evaluate all",
-			max:  MaxMin,
+			max:  MaxMins,
 			item: "*",
 			expected: []int{
 				0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -228,7 +249,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate num item",
-			max:      MaxMin,
+			max:      MaxMins,
 			item:     "24",
 			expected: []int{24},
 			err:      nil,
@@ -236,7 +257,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate num item including value which greater than the max threshold",
-			max:      MaxHour,
+			max:      MaxHours,
 			item:     "24",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -244,7 +265,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate list item",
-			max:      MaxMin,
+			max:      MaxMins,
 			item:     "7,24,47",
 			expected: []int{7, 24, 47},
 			err:      nil,
@@ -252,7 +273,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate list item including value which greater than the max threshold",
-			max:      MaxHour,
+			max:      MaxHours,
 			item:     "7,24,47",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -260,7 +281,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate range item",
-			max:      MaxMin,
+			max:      MaxMins,
 			item:     "22-26",
 			expected: []int{22, 23, 24, 25, 26},
 			err:      nil,
@@ -268,7 +289,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate range item including value which is greater than the max threshold",
-			max:      MaxHour,
+			max:      MaxHours,
 			item:     "22-26",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -276,7 +297,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate step item",
-			max:      MaxMin,
+			max:      MaxMins,
 			item:     "*/30",
 			expected: []int{0, 30},
 			err:      nil,
@@ -284,7 +305,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate step item including value which is greater than the max threshold",
-			max:      MaxHour,
+			max:      MaxHours,
 			item:     "*/30",
 			expected: []int{0},
 			err:      nil,
@@ -292,7 +313,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name: "evaluate combination includes all",
-			max:  MaxMin,
+			max:  MaxMins,
 			item: "*,24",
 			expected: []int{
 				0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -307,7 +328,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate combination includes all and number which is greater than the max threshold",
-			max:      MaxHour,
+			max:      MaxHours,
 			item:     "*,24",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -315,7 +336,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate combination of number, range, step",
-			max:      MaxMin,
+			max:      MaxMins,
 			item:     "3,17-19,*/10",
 			expected: []int{0, 3, 10, 17, 18, 19, 20, 30, 40, 50},
 			err:      nil,
