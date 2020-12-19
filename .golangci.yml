@@ -3,7 +3,7 @@ linters-settings:
     threshold: 100
 
   funlen:
-    lines: 100
+    lines: 150
     statements: 50
 
   gci:
