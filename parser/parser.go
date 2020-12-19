@@ -9,8 +9,12 @@ import (
 
 const (
 	CronExpressionPartsNum = 6
-	MaxHour                = 23
-	MaxMin                 = 59
+
+	MaxDays  = 31
+	MaxHours = 23
+	MaxMins  = 59
+
+	ExcludeDay = 0
 )
 
 func ParseCrontab(crontabs string) []*Expression {
@@ -48,34 +52,53 @@ func filterNonExpression(line string) bool {
 
 // NOTE:
 // currently only support daily execution schedule
-type ExecutionSchedule [][]bool
+type ExecutionSchedule DailySched
+type DailySched []HourlySched
+type HourlySched []MinutelySched
+type MinutelySched []bool
 
 func InitSchedule() ExecutionSchedule {
-	hours := make([][]bool, MaxHour+1)
-	for i := 0; i <= MaxHour; i++ {
-		mins := make([]bool, MaxMin+1)
-		for j := 0; j <= MaxMin; j++ {
-			mins[j] = false
+	days := make(ExecutionSchedule, MaxDays+1)
+
+	for k := 0; k <= MaxDays; k++ {
+		hours := make(HourlySched, MaxHours+1)
+
+		for j := 0; j <= MaxHours; j++ {
+			mins := make(MinutelySched, MaxMins+1)
+
+			for i := 0; i <= MaxMins; i++ {
+				mins[i] = false
+			}
+			hours[j] = mins
 		}
-		hours[i] = mins
+
+		days[k] = hours
 	}
 
-	return hours
+	return days
 }
 
 func (es ExecutionSchedule) String() string {
 	var b strings.Builder
 
-	for i, h := range es {
-		fmt.Fprintf(&b, "%02d: ", i)
-		for _, m := range h {
-			if m {
-				fmt.Fprint(&b, "■")
-			} else {
-				fmt.Fprint(&b, "□")
-			}
+	for k, d := range es {
+		if k == ExcludeDay {
+			continue
 		}
-		fmt.Fprint(&b, "\n")
+
+		fmt.Fprintf(&b, "%02d Day\n", k)
+
+		for j, h := range d {
+			fmt.Fprintf(&b, "%02dH: ", j)
+			for _, m := range h {
+				if m {
+					fmt.Fprint(&b, "■")
+				} else {
+					fmt.Fprint(&b, "□")
+				}
+			}
+			fmt.Fprint(&b, "\n")
+		}
 	}
 
 	return b.String()
@@ -91,19 +114,26 @@ type Expression struct {
 }
 
 func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, error) {
-	hs, err := EvaluateItem(MaxHour, e.hour)
+	ds, err := EvaluateItem(MaxDays, e.day)
 	if err != nil {
 		return schedule, err
 	}
 
-	ms, err := EvaluateItem(MaxMin, e.min)
+	hs, err := EvaluateItem(MaxHours, e.hour)
 	if err != nil {
 		return schedule, err
 	}
 
-	for _, h := range hs {
-		for _, m := range ms {
-			schedule[h][m] = true
+	ms, err := EvaluateItem(MaxMins, e.min)
+	if err != nil {
+		return schedule, err
+	}
+
+	for _, d := range ds {
+		for _, h := range hs {
+			for _, m := range ms {
+				schedule[d][h][m] = true
+			}
 		}
 	}
 

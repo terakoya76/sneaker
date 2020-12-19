@@ -37,6 +37,6 @@ $ crontab -l | sneaker
 ```
 
 ## Note
-This tool currently only evaluate minute,hour part of cron expression.
+This tool currently only evaluate minute,hour,day part of cron expression.
 So what it describes is not an actual execution schedule.
 It contains some false-positive execution schedule.
