@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,8 +11,13 @@ import (
 	"github.com/terakoya76/sneaker/parser"
 )
 
+var filename string
+var dayFilter int
+
 func main() {
 	cobra.OnInitialize()
+	rootCmd.PersistentFlags().StringVar(&filename, "filename", "", "filename of crontab")
+	rootCmd.PersistentFlags().IntVar(&dayFilter, "day", 0, "filter for displaying the specific day of execution schedule")
 	rootCmd.DisableSuggestions = false
 
 	if err := rootCmd.Execute(); err != nil {
@@ -27,7 +31,13 @@ var rootCmd = &cobra.Command{
 	Short: "sneaker parse crontab output and visualize it to find execution intervals",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		input, err := getInput()
+		filename, err := cmd.Flags().GetString("filename")
+		if err != nil {
+			fmt.Fprint(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		input, err := getInput(filename)
 		if err != nil {
 			fmt.Fprint(os.Stderr, err.Error())
 			os.Exit(1)
@@ -43,28 +53,31 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Println(schedule)
+		day, err := cmd.Flags().GetInt("day")
+		if err != nil {
+			fmt.Fprint(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+
+		if day > 0 {
+			fmt.Println(schedule[day])
+		} else {
+			fmt.Println(schedule.String())
+		}
 	},
 }
 
-func getInput() (string, error) {
-	var filename string
-	flag.Parse()
-	if args := flag.Args(); len(args) > 0 {
-		filename = args[0]
-	}
-
+func getInput(filename string) (string, error) {
 	var r io.Reader
-	switch filename {
-	case "", "-":
-		r = os.Stdin
-	default:
+	if filename != "" {
 		f, err := os.Open(filename)
 		if err != nil {
 			return "", err
 		}
 		defer f.Close()
 		r = f
+	} else {
+		r = os.Stdin
 	}
 
 	t, err := ioutil.ReadAll(r)

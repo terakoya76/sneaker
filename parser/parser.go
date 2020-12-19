@@ -52,19 +52,19 @@ func filterNonExpression(line string) bool {
 
 // NOTE:
 // currently only support daily execution schedule
-type ExecutionSchedule DailySched
-type DailySched []HourlySched
-type HourlySched []MinutelySched
-type MinutelySched []bool
+type ExecutionSchedule DailySchedule
+type DailySchedule []HourlySchedule
+type HourlySchedule []MinutelySchedule
+type MinutelySchedule []bool
 
 func InitSchedule() ExecutionSchedule {
 	days := make(ExecutionSchedule, MaxDays+1)
 
 	for k := 0; k <= MaxDays; k++ {
-		hours := make(HourlySched, MaxHours+1)
+		hours := make(HourlySchedule, MaxHours+1)
 
 		for j := 0; j <= MaxHours; j++ {
-			mins := make(MinutelySched, MaxMins+1)
+			mins := make(MinutelySchedule, MaxMins+1)
 
 			for i := 0; i <= MaxMins; i++ {
 				mins[i] = false
@@ -79,26 +79,38 @@ func InitSchedule() ExecutionSchedule {
 }
 
 func (es ExecutionSchedule) String() string {
+	ds := DailySchedule(es)
+	return ds.String()
+}
+
+func (ds DailySchedule) String() string {
 	var b strings.Builder
 
-	for k, d := range es {
+	for k, d := range ds {
 		if k == ExcludeDay {
 			continue
 		}
 
 		fmt.Fprintf(&b, "%02d Day\n", k)
+		fmt.Fprint(&b, d.String())
+	}
 
-		for j, h := range d {
-			fmt.Fprintf(&b, "%02dH: ", j)
-			for _, m := range h {
-				if m {
-					fmt.Fprint(&b, "■")
-				} else {
-					fmt.Fprint(&b, "□")
-				}
+	return b.String()
+}
+
+func (hs HourlySchedule) String() string {
+	var b strings.Builder
+
+	for j, h := range hs {
+		fmt.Fprintf(&b, "%02dH: ", j)
+		for _, m := range h {
+			if m {
+				fmt.Fprint(&b, "■")
+			} else {
+				fmt.Fprint(&b, "□")
 			}
-			fmt.Fprint(&b, "\n")
 		}
+		fmt.Fprint(&b, "\n")
 	}
 
 	return b.String()
