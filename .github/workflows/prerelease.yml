@@ -1,0 +1,13 @@
+name: pre-release
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  pre-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Bump version on merging Pull Requests with specific labels.
+      # (bump:major,bump:minor,bump:patch)
+      - uses: haya14busa/action-bumpr@v1

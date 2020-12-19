@@ -1,0 +1,38 @@
+name: release
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: haya14busa/action-bumpr@v1
+        id: bumpr
+        if: "!startsWith(github.ref, 'refs/tags/')"
+
+      # Get tag name.
+      - uses: haya14busa/action-cond@v1
+        id: tag
+        with:
+          cond: "${{ startsWith(github.ref, 'refs/tags/') }}"
+          if_true: ${{ github.ref }}
+          if_false: ${{ steps.bumpr.outputs.next_version }}
+
+      - uses: actions/setup-go@v2
+        if: "steps.tag.outputs.value != ''"
+        with:
+          go-version: "1.15"
+
+      - uses: goreleaser/goreleaser-action@v1
+        if: "steps.tag.outputs.value != ''"
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
