@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+const (
+	CronExpressionPartsNum = 6
+	MaxHour                = 23
+	MaxMin                 = 59
+)
+
 func ParseCrontab(crontabs string) []*Expression {
 	result := []*Expression{}
 	lines := strings.Split(crontabs, "\n")
@@ -33,7 +39,7 @@ func filterNonExpression(line string) bool {
 		return false
 	}
 
-	if len(strings.Fields(line)) <= 5 {
+	if len(strings.Fields(line)) < CronExpressionPartsNum {
 		return false
 	}
 
@@ -45,10 +51,10 @@ func filterNonExpression(line string) bool {
 type ExecutionSchedule [][]bool
 
 func InitSchedule() ExecutionSchedule {
-	hours := make([][]bool, 24)
-	for i := 0; i < 24; i++ {
-		mins := make([]bool, 60)
-		for j := 0; j < 60; j++ {
+	hours := make([][]bool, MaxHour+1)
+	for i := 0; i <= MaxHour; i++ {
+		mins := make([]bool, MaxMin+1)
+		for j := 0; j <= MaxMin; j++ {
 			mins[j] = false
 		}
 		hours[i] = mins
@@ -85,12 +91,12 @@ type Expression struct {
 }
 
 func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, error) {
-	hs, err := EvaluateItem(24, e.hour)
+	hs, err := EvaluateItem(MaxHour, e.hour)
 	if err != nil {
 		return schedule, err
 	}
 
-	ms, err := EvaluateItem(60, e.min)
+	ms, err := EvaluateItem(MaxMin, e.min)
 	if err != nil {
 		return schedule, err
 	}
@@ -107,36 +113,39 @@ func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, er
 func EvaluateItem(max int, item string) ([]int, error) {
 	result := []int{}
 
+	singlePartsNum := 1
+	listItemPartsNum := 2
+
 	all := false
 	parts := strings.Split(item, ",")
 	for _, part := range parts {
 		arr := strings.Split(part, "/")
 		switch len(arr) {
-		case 1:
+		case singlePartsNum:
 			if arr[0] == "*" {
 				all = true
 			} else if strings.Contains(arr[0], "-") {
 				nums, err := evaluteRange(max, arr[0])
 				if err != nil {
 					return []int{}, fmt.Errorf("%s", err.Error())
-				} else {
-					result = append(result, nums...)
 				}
+
+				result = append(result, nums...)
 			} else {
 				num, err := evaluateNum(max, arr[0])
 				if err != nil {
 					return []int{}, fmt.Errorf("%s", err.Error())
-				} else {
-					result = append(result, num)
 				}
+
+				result = append(result, num)
 			}
-		case 2:
+		case listItemPartsNum:
 			nums, err := evaluteStep(max, arr[0], arr[1])
 			if err != nil {
 				return []int{}, fmt.Errorf("%s", err.Error())
-			} else {
-				result = append(result, nums...)
 			}
+
+			result = append(result, nums...)
 		default:
 			return []int{}, fmt.Errorf("%s", "Invalid cron expression")
 		}
@@ -144,15 +153,15 @@ func EvaluateItem(max int, item string) ([]int, error) {
 
 	if all {
 		return evaluteAll(max)
-	} else {
-		sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
-		return result, nil
 	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result, nil
 }
 
 func evaluteAll(max int) ([]int, error) {
-	all := make([]int, max)
-	for i := 0; i < max; i++ {
+	all := make([]int, max+1)
+	for i := 0; i <= max; i++ {
 		all[i] = i
 	}
 	return all, nil
@@ -164,11 +173,11 @@ func evaluateNum(max int, item string) (int, error) {
 		return 0, err
 	}
 
-	if num < max {
+	if num <= max {
 		return num, nil
-	} else {
-		return 0, fmt.Errorf("%s", "given number is exceeded the max threshold")
 	}
+
+	return 0, fmt.Errorf("%s", "given number is exceeded the max threshold")
 }
 
 func evaluteRange(max int, item string) ([]int, error) {
@@ -186,7 +195,7 @@ func evaluteRange(max int, item string) ([]int, error) {
 
 	rng := []int{}
 	for i := begin; i <= end; i++ {
-		if i >= max {
+		if i >= max+1 {
 			return []int{}, fmt.Errorf("%s", "given number is exceeded the max threshold")
 		}
 		rng = append(rng, i)
@@ -195,7 +204,7 @@ func evaluteRange(max int, item string) ([]int, error) {
 	return rng, nil
 }
 
-func evaluteStep(max int, numerator string, denominator string) ([]int, error) {
+func evaluteStep(max int, numerator, denominator string) ([]int, error) {
 	den, err := strconv.Atoi(denominator)
 	if err != nil {
 		return []int{}, err
@@ -203,7 +212,7 @@ func evaluteStep(max int, numerator string, denominator string) ([]int, error) {
 
 	var rng []int
 	if numerator == "*" {
-		r, err := evaluteRange(max, fmt.Sprintf("0-%d", max-1))
+		r, err := evaluteRange(max, fmt.Sprintf("0-%d", max))
 		if err != nil {
 			return []int{}, err
 		}
@@ -215,7 +224,7 @@ func evaluteStep(max int, numerator string, denominator string) ([]int, error) {
 		}
 		rng = r
 	} else {
-		r, err := evaluteRange(max, fmt.Sprintf("%s-%d", numerator, max-1))
+		r, err := evaluteRange(max, fmt.Sprintf("%s-%d", numerator, max))
 		if err != nil {
 			return []int{}, err
 		}

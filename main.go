@@ -13,15 +13,13 @@ import (
 )
 
 func main() {
+	cobra.OnInitialize()
+	rootCmd.DisableSuggestions = false
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-}
-
-func init() {
-	cobra.OnInitialize()
-	rootCmd.DisableSuggestions = false
 }
 
 var rootCmd = &cobra.Command{
