@@ -174,9 +174,9 @@ func everyMinEveryHourEveryDaySched(min, hour, day int) ExecutionSchedule {
 		if k%day == 0 {
 			for j, h := range d {
 				if j%hour == 0 {
-					for m := range h {
-						if m%min == 0 {
-							h[m] = true
+					for i := range h {
+						if i%min == 0 {
+							s[k][j][i] = true
 						}
 					}
 				}
@@ -209,15 +209,7 @@ func specMinsSpecHoursSpecDaysSched(mins, hours, days []int) ExecutionSchedule {
 
 func specMinSpecHourSpecDaySched(min, hour, day int) ExecutionSchedule {
 	s := InitSchedule()
-	for k, d := range s {
-		if k == day {
-			for j, h := range d {
-				if j == hour {
-					h[min] = true
-				}
-			}
-		}
-	}
+	s[day][hour][min] = true
 
 	return s
 }
