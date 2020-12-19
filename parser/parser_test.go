@@ -12,11 +12,11 @@ func TestParseCrontab(t *testing.T) {
 # comment
 * * * * * taskA
 
-10 0 20 * * taskB
+10 0 20 9 * taskB
 
-*/5 */10 */3 * * taskC
+*/5 */10 */3 */4 * taskC
 
-7,27,47 23,0-7 10,20,30 * * taskD
+7,27,47 23,0-7 10,20,30 2,3 * taskD
 `
 
 	cases := []struct {
@@ -42,7 +42,7 @@ func TestParseCrontab(t *testing.T) {
 					min:   "10",
 					hour:  "0",
 					day:   "20",
-					month: "*",
+					month: "9",
 					wday:  "*",
 					cmd:   "taskB",
 				},
@@ -51,7 +51,7 @@ func TestParseCrontab(t *testing.T) {
 					min:   "*/5",
 					hour:  "*/10",
 					day:   "*/3",
-					month: "*",
+					month: "*/4",
 					wday:  "*",
 					cmd:   "taskC",
 				},
@@ -60,7 +60,7 @@ func TestParseCrontab(t *testing.T) {
 					min:   "7,27,47",
 					hour:  "23,0-7",
 					day:   "10,20,30",
-					month: "*",
+					month: "2,3",
 					wday:  "*",
 					cmd:   "taskD",
 				},
@@ -94,49 +94,49 @@ func TestEvaluate(t *testing.T) {
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: everyMinEveryHourEveryDaySched(1, 1, 1),
+			expected: everyMinEveryHourEveryDayEveryMonthSched(1, 1, 1, 1),
 			err:      nil,
 		},
 
 		{
-			name: "every */4:*/5 on * */10",
+			name: "every */4:*/5 on */3 */10",
 			exp: &Expression{
 				min:   "*/5",
 				hour:  "*/4",
 				day:   "*/10",
-				month: "*",
+				month: "*/3",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: everyMinEveryHourEveryDaySched(5, 4, 10),
+			expected: everyMinEveryHourEveryDayEveryMonthSched(5, 4, 10, 3),
 			err:      nil,
 		},
 
 		{
-			name: "each 07,08,09:10,11,12 on * 20,21,22",
+			name: "each 7,8,9:10,11,12 on 4,5 20,21,22",
 			exp: &Expression{
 				min:   "10,11,12",
 				hour:  "7,8,9",
 				day:   "20,21,22",
-				month: "*",
+				month: "4,5",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: specMinsSpecHoursSpecDaysSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}),
+			expected: specMinsSpecHoursSpecDaysSpecMonthesSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}, []int{4, 5}),
 			err:      nil,
 		},
 
 		{
-			name: "each 07,08,09:10,11,12 on * 20,21,22",
+			name: "each 7,8,9:10,11,12 on 4,5 20,21,22",
 			exp: &Expression{
 				min:   "10-12",
 				hour:  "7-9",
 				day:   "20-22",
-				month: "*",
+				month: "4-5",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: specMinsSpecHoursSpecDaysSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}),
+			expected: specMinsSpecHoursSpecDaysSpecMonthesSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}, []int{4, 5}),
 			err:      nil,
 		},
 
@@ -146,11 +146,11 @@ func TestEvaluate(t *testing.T) {
 				min:   "5",
 				hour:  "7",
 				day:   "1",
-				month: "*",
+				month: "10",
 				wday:  "*",
 				cmd:   "task",
 			},
-			expected: specMinSpecHourSpecDaySched(5, 7, 1),
+			expected: specMinSpecHourSpecDaySched(5, 7, 1, 10),
 			err:      nil,
 		},
 	}
@@ -168,15 +168,19 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
-func everyMinEveryHourEveryDaySched(min, hour, day int) ExecutionSchedule {
+func everyMinEveryHourEveryDayEveryMonthSched(min, hour, day, month int) ExecutionSchedule {
 	s := InitSchedule()
-	for k, d := range s {
-		if k%day == 0 {
-			for j, h := range d {
-				if j%hour == 0 {
-					for i := range h {
-						if i%min == 0 {
-							s[k][j][i] = true
+	for l, mon := range s {
+		if l%month == 0 {
+			for k, d := range mon {
+				if k%day == 0 {
+					for j, h := range d {
+						if j%hour == 0 {
+							for i := range h {
+								if i%min == 0 {
+									s[l][k][j][i] = true
+								}
+							}
 						}
 					}
 				}
@@ -187,16 +191,20 @@ func everyMinEveryHourEveryDaySched(min, hour, day int) ExecutionSchedule {
 	return s
 }
 
-func specMinsSpecHoursSpecDaysSched(mins, hours, days []int) ExecutionSchedule {
+func specMinsSpecHoursSpecDaysSpecMonthesSched(mins, hours, days, monthes []int) ExecutionSchedule {
 	s := InitSchedule()
 
-	for k, d := range s {
-		if contain(days, k) {
-			for j, h := range d {
-				if contain(hours, j) {
-					for i := range h {
-						if contain(mins, i) {
-							s[k][j][i] = true
+	for l, mon := range s {
+		if contain(monthes, l) {
+			for k, d := range mon {
+				if contain(days, k) {
+					for j, h := range d {
+						if contain(hours, j) {
+							for i := range h {
+								if contain(mins, i) {
+									s[l][k][j][i] = true
+								}
+							}
 						}
 					}
 				}
@@ -207,9 +215,9 @@ func specMinsSpecHoursSpecDaysSched(mins, hours, days []int) ExecutionSchedule {
 	return s
 }
 
-func specMinSpecHourSpecDaySched(min, hour, day int) ExecutionSchedule {
+func specMinSpecHourSpecDaySched(min, hour, day, month int) ExecutionSchedule {
 	s := InitSchedule()
-	s[day][hour][min] = true
+	s[month][day][hour][min] = true
 
 	return s
 }

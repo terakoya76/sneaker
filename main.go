@@ -12,12 +12,10 @@ import (
 )
 
 var filename string
-var dayFilter int
 
 func main() {
 	cobra.OnInitialize()
 	rootCmd.PersistentFlags().StringVar(&filename, "filename", "", "filename of crontab")
-	rootCmd.PersistentFlags().IntVar(&dayFilter, "day", 0, "filter for displaying the specific day of execution schedule")
 	rootCmd.DisableSuggestions = false
 
 	if err := rootCmd.Execute(); err != nil {
@@ -53,17 +51,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		day, err := cmd.Flags().GetInt("day")
-		if err != nil {
-			fmt.Fprint(os.Stderr, err.Error())
-			os.Exit(1)
-		}
-
-		if day > 0 {
-			fmt.Println(schedule[day])
-		} else {
-			fmt.Println(schedule.String())
-		}
+		fmt.Println(schedule)
 	},
 }
 

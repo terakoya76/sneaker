@@ -33,6 +33,7 @@ func (w WeekDay) String() string {
 		return "Unknown"
 	}
 }
+*/
 
 type Month int
 
@@ -82,4 +83,3 @@ func (m Month) String() string {
 		return "Unknown"
 	}
 }
-*/

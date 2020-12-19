@@ -5,16 +5,20 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/terakoya76/sneaker/enum"
 )
 
 const (
 	CronExpressionPartsNum = 6
 
-	MaxDays  = 31
-	MaxHours = 23
-	MaxMins  = 59
+	MaxMonthes = 12
+	MaxDays    = 31
+	MaxHours   = 23
+	MaxMins    = 59
 
-	ExcludeDay = 0
+	ExcludeMonth = 0
+	ExcludeDay   = 0
 )
 
 func ParseCrontab(crontabs string) []*Expression {
@@ -51,36 +55,63 @@ func filterNonExpression(line string) bool {
 }
 
 // NOTE:
-// currently only support daily execution schedule
-type ExecutionSchedule DailySchedule
+// currently not support wday execution schedule
+type ExecutionSchedule MonthlySchedule
+type MonthlySchedule []DailySchedule
 type DailySchedule []HourlySchedule
 type HourlySchedule []MinutelySchedule
 type MinutelySchedule []bool
 
 func InitSchedule() ExecutionSchedule {
-	days := make(ExecutionSchedule, MaxDays+1)
+	monthes := make(ExecutionSchedule, MaxMonthes+1)
 
-	for k := 0; k <= MaxDays; k++ {
-		hours := make(HourlySchedule, MaxHours+1)
+	for l := 0; l <= MaxMonthes; l++ {
+		days := make(DailySchedule, MaxDays+1)
 
-		for j := 0; j <= MaxHours; j++ {
-			mins := make(MinutelySchedule, MaxMins+1)
+		for k := 0; k <= MaxDays; k++ {
+			hours := make(HourlySchedule, MaxHours+1)
 
-			for i := 0; i <= MaxMins; i++ {
-				mins[i] = false
+			for j := 0; j <= MaxHours; j++ {
+				mins := make(MinutelySchedule, MaxMins+1)
+
+				for i := 0; i <= MaxMins; i++ {
+					mins[i] = false
+				}
+
+				hours[j] = mins
 			}
-			hours[j] = mins
+
+			days[k] = hours
 		}
 
-		days[k] = hours
+		monthes[l] = days
 	}
 
-	return days
+	return monthes
 }
 
 func (es ExecutionSchedule) String() string {
-	ds := DailySchedule(es)
-	return ds.String()
+	mons := MonthlySchedule(es)
+	return mons.String()
+}
+
+func (mons MonthlySchedule) String() string {
+	var b strings.Builder
+
+	for l, mon := range mons {
+		if l == ExcludeMonth {
+			continue
+		}
+
+		slice := strings.Split(mon.String(), "\n")
+		slice = slice[0 : len(slice)-1]
+		for _, str := range slice {
+			fmt.Fprintf(&b, "%s ", enum.Month(l))
+			fmt.Fprintln(&b, str)
+		}
+	}
+
+	return b.String()
 }
 
 func (ds DailySchedule) String() string {
@@ -91,8 +122,12 @@ func (ds DailySchedule) String() string {
 			continue
 		}
 
-		fmt.Fprintf(&b, "%02d Day\n", k)
-		fmt.Fprint(&b, d.String())
+		slice := strings.Split(d.String(), "\n")
+		slice = slice[0 : len(slice)-1]
+		for _, str := range slice {
+			fmt.Fprintf(&b, "%02d, ", k)
+			fmt.Fprintln(&b, str)
+		}
 	}
 
 	return b.String()
@@ -126,6 +161,11 @@ type Expression struct {
 }
 
 func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, error) {
+	mons, err := EvaluateItem(MaxMonthes, e.month)
+	if err != nil {
+		return schedule, err
+	}
+
 	ds, err := EvaluateItem(MaxDays, e.day)
 	if err != nil {
 		return schedule, err
@@ -141,10 +181,12 @@ func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, er
 		return schedule, err
 	}
 
-	for _, d := range ds {
-		for _, h := range hs {
-			for _, m := range ms {
-				schedule[d][h][m] = true
+	for _, mon := range mons {
+		for _, d := range ds {
+			for _, h := range hs {
+				for _, m := range ms {
+					schedule[mon][d][h][m] = true
+				}
 			}
 		}
 	}
