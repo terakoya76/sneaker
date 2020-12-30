@@ -66,6 +66,7 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
@@ -78,6 +79,8 @@ linters:
     - goconst
     - gocritic
     - gocyclo
+    - godot
+    - godox
     - gofmt
     - goimports
     - golint
@@ -89,34 +92,31 @@ linters:
     - ineffassign
     - interfacer
     - lll
+    - maligned
     - misspell
     - nakedret
     - noctx
     - nolintlint
+    - prealloc
     - rowserrcheck
     - scopelint
     - staticcheck
     - structcheck
     - stylecheck
+    - testpackage
     - typecheck
     - unconvert
     - unparam
     - unused
     - varcheck
     - whitespace
+    - wsl
 
     # don't enable:
-    # - asciicheck
     # - gochecknoglobals
     # - gocognit
-    # - godot
-    # - godox
     # - goerr113
-    # - maligned
     # - nestif
-    # - prealloc
-    # - testpackage
-    # - wsl
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration

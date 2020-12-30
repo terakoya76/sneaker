@@ -1,10 +1,12 @@
-package parser
+package parser_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/terakoya76/sneaker/parser"
 )
 
 func TestParseCrontab(t *testing.T) {
@@ -22,47 +24,47 @@ func TestParseCrontab(t *testing.T) {
 	cases := []struct {
 		name     string
 		str      string
-		expected []*Expression
+		expected []*parser.Expression
 		err      error
 	}{
 		{
 			name: "crontab",
 			str:  crontab,
-			expected: []*Expression{
+			expected: []*parser.Expression{
 				{
-					min:   "*",
-					hour:  "*",
-					day:   "*",
-					month: "*",
-					wday:  "*",
-					cmd:   "taskA",
+					Min:   "*",
+					Hour:  "*",
+					Day:   "*",
+					Month: "*",
+					Wday:  "*",
+					Cmd:   "taskA",
 				},
 
 				{
-					min:   "10",
-					hour:  "0",
-					day:   "20",
-					month: "9",
-					wday:  "*",
-					cmd:   "taskB",
+					Min:   "10",
+					Hour:  "0",
+					Day:   "20",
+					Month: "9",
+					Wday:  "*",
+					Cmd:   "taskB",
 				},
 
 				{
-					min:   "*/5",
-					hour:  "*/10",
-					day:   "*/3",
-					month: "*/4",
-					wday:  "*",
-					cmd:   "taskC",
+					Min:   "*/5",
+					Hour:  "*/10",
+					Day:   "*/3",
+					Month: "*/4",
+					Wday:  "*",
+					Cmd:   "taskC",
 				},
 
 				{
-					min:   "7,27,47",
-					hour:  "23,0-7",
-					day:   "10,20,30",
-					month: "2,3",
-					wday:  "*",
-					cmd:   "taskD",
+					Min:   "7,27,47",
+					Hour:  "23,0-7",
+					Day:   "10,20,30",
+					Month: "2,3",
+					Wday:  "*",
+					Cmd:   "taskD",
 				},
 			},
 			err: nil,
@@ -70,7 +72,7 @@ func TestParseCrontab(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		actual := ParseCrontab(c.str)
+		actual := parser.ParseCrontab(c.str)
 		if !assert.Equal(t, c.expected, actual) {
 			t.Errorf("case: %s is failed, expected: %+v, actual: %+v\n", c.name, c.expected, actual)
 		}
@@ -80,19 +82,19 @@ func TestParseCrontab(t *testing.T) {
 func TestEvaluate(t *testing.T) {
 	cases := []struct {
 		name     string
-		exp      *Expression
-		expected ExecutionSchedule
+		exp      *parser.Expression
+		expected parser.ExecutionSchedule
 		err      error
 	}{
 		{
 			name: "every *:* on */*",
-			exp: &Expression{
-				min:   "*",
-				hour:  "*",
-				day:   "*",
-				month: "*",
-				wday:  "*",
-				cmd:   "task",
+			exp: &parser.Expression{
+				Min:   "*",
+				Hour:  "*",
+				Day:   "*",
+				Month: "*",
+				Wday:  "*",
+				Cmd:   "task",
 			},
 			expected: everyMinEveryHourEveryDayEveryMonthSched(1, 1, 1, 1),
 			err:      nil,
@@ -100,13 +102,13 @@ func TestEvaluate(t *testing.T) {
 
 		{
 			name: "every */4:*/5 on */3 */10",
-			exp: &Expression{
-				min:   "*/5",
-				hour:  "*/4",
-				day:   "*/10",
-				month: "*/3",
-				wday:  "*",
-				cmd:   "task",
+			exp: &parser.Expression{
+				Min:   "*/5",
+				Hour:  "*/4",
+				Day:   "*/10",
+				Month: "*/3",
+				Wday:  "*",
+				Cmd:   "task",
 			},
 			expected: everyMinEveryHourEveryDayEveryMonthSched(5, 4, 10, 3),
 			err:      nil,
@@ -114,13 +116,13 @@ func TestEvaluate(t *testing.T) {
 
 		{
 			name: "each 7,8,9:10,11,12 on 4,5 20,21,22",
-			exp: &Expression{
-				min:   "10,11,12",
-				hour:  "7,8,9",
-				day:   "20,21,22",
-				month: "4,5",
-				wday:  "*",
-				cmd:   "task",
+			exp: &parser.Expression{
+				Min:   "10,11,12",
+				Hour:  "7,8,9",
+				Day:   "20,21,22",
+				Month: "4,5",
+				Wday:  "*",
+				Cmd:   "task",
 			},
 			expected: specMinsSpecHoursSpecDaysSpecMonthesSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}, []int{4, 5}),
 			err:      nil,
@@ -128,13 +130,13 @@ func TestEvaluate(t *testing.T) {
 
 		{
 			name: "each 7,8,9:10,11,12 on 4,5 20,21,22",
-			exp: &Expression{
-				min:   "10-12",
-				hour:  "7-9",
-				day:   "20-22",
-				month: "4-5",
-				wday:  "*",
-				cmd:   "task",
+			exp: &parser.Expression{
+				Min:   "10-12",
+				Hour:  "7-9",
+				Day:   "20-22",
+				Month: "4-5",
+				Wday:  "*",
+				Cmd:   "task",
 			},
 			expected: specMinsSpecHoursSpecDaysSpecMonthesSched([]int{10, 11, 12}, []int{7, 8, 9}, []int{20, 21, 22}, []int{4, 5}),
 			err:      nil,
@@ -142,13 +144,13 @@ func TestEvaluate(t *testing.T) {
 
 		{
 			name: "every 07:05 on * 1",
-			exp: &Expression{
-				min:   "5",
-				hour:  "7",
-				day:   "1",
-				month: "10",
-				wday:  "*",
-				cmd:   "task",
+			exp: &parser.Expression{
+				Min:   "5",
+				Hour:  "7",
+				Day:   "1",
+				Month: "10",
+				Wday:  "*",
+				Cmd:   "task",
 			},
 			expected: specMinSpecHourSpecDaySched(5, 7, 1, 10),
 			err:      nil,
@@ -156,8 +158,9 @@ func TestEvaluate(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		schedule := InitSchedule()
+		schedule := parser.InitSchedule()
 		actual, err := c.exp.Evaluate(schedule)
+
 		if !assert.Equal(t, c.err, err) {
 			t.Errorf("err: %s is failed, expected: %s, actual: %s\n", c.name, c.err, err)
 		}
@@ -168,8 +171,8 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
-func everyMinEveryHourEveryDayEveryMonthSched(min, hour, day, month int) ExecutionSchedule {
-	s := InitSchedule()
+func everyMinEveryHourEveryDayEveryMonthSched(min, hour, day, month int) parser.ExecutionSchedule {
+	s := parser.InitSchedule()
 	for l, mon := range s {
 		if l%month == 0 {
 			for k, d := range mon {
@@ -191,8 +194,8 @@ func everyMinEveryHourEveryDayEveryMonthSched(min, hour, day, month int) Executi
 	return s
 }
 
-func specMinsSpecHoursSpecDaysSpecMonthesSched(mins, hours, days, monthes []int) ExecutionSchedule {
-	s := InitSchedule()
+func specMinsSpecHoursSpecDaysSpecMonthesSched(mins, hours, days, monthes []int) parser.ExecutionSchedule {
+	s := parser.InitSchedule()
 
 	for l, mon := range s {
 		if contain(monthes, l) {
@@ -215,8 +218,8 @@ func specMinsSpecHoursSpecDaysSpecMonthesSched(mins, hours, days, monthes []int)
 	return s
 }
 
-func specMinSpecHourSpecDaySched(min, hour, day, month int) ExecutionSchedule {
-	s := InitSchedule()
+func specMinSpecHourSpecDaySched(min, hour, day, month int) parser.ExecutionSchedule {
+	s := parser.InitSchedule()
 	s[month][day][hour][min] = true
 
 	return s
@@ -242,7 +245,7 @@ func TestEvaluateItem(t *testing.T) {
 	}{
 		{
 			name: "evaluate all",
-			max:  MaxMins,
+			max:  parser.MaxMins,
 			item: "*",
 			expected: []int{
 				0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -257,7 +260,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate num item",
-			max:      MaxMins,
+			max:      parser.MaxMins,
 			item:     "24",
 			expected: []int{24},
 			err:      nil,
@@ -265,7 +268,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate num item including value which greater than the max threshold",
-			max:      MaxHours,
+			max:      parser.MaxHours,
 			item:     "24",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -273,7 +276,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate list item",
-			max:      MaxMins,
+			max:      parser.MaxMins,
 			item:     "7,24,47",
 			expected: []int{7, 24, 47},
 			err:      nil,
@@ -281,7 +284,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate list item including value which greater than the max threshold",
-			max:      MaxHours,
+			max:      parser.MaxHours,
 			item:     "7,24,47",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -289,7 +292,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate range item",
-			max:      MaxMins,
+			max:      parser.MaxMins,
 			item:     "22-26",
 			expected: []int{22, 23, 24, 25, 26},
 			err:      nil,
@@ -297,7 +300,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate range item including value which is greater than the max threshold",
-			max:      MaxHours,
+			max:      parser.MaxHours,
 			item:     "22-26",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -305,7 +308,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate step item",
-			max:      MaxMins,
+			max:      parser.MaxMins,
 			item:     "*/30",
 			expected: []int{0, 30},
 			err:      nil,
@@ -313,7 +316,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate step item including value which is greater than the max threshold",
-			max:      MaxHours,
+			max:      parser.MaxHours,
 			item:     "*/30",
 			expected: []int{0},
 			err:      nil,
@@ -321,7 +324,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name: "evaluate combination includes all",
-			max:  MaxMins,
+			max:  parser.MaxMins,
 			item: "*,24",
 			expected: []int{
 				0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -336,7 +339,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate combination includes all and number which is greater than the max threshold",
-			max:      MaxHours,
+			max:      parser.MaxHours,
 			item:     "*,24",
 			expected: []int{},
 			err:      fmt.Errorf("%s", "given number is exceeded the max threshold"),
@@ -344,7 +347,7 @@ func TestEvaluateItem(t *testing.T) {
 
 		{
 			name:     "evaluate combination of number, range, step",
-			max:      MaxMins,
+			max:      parser.MaxMins,
 			item:     "3,17-19,*/10",
 			expected: []int{0, 3, 10, 17, 18, 19, 20, 30, 40, 50},
 			err:      nil,
@@ -352,7 +355,7 @@ func TestEvaluateItem(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		actual, err := EvaluateItem(c.max, c.item)
+		actual, err := parser.EvaluateItem(c.max, c.item)
 		if !assert.Equal(t, c.err, err) {
 			t.Errorf("err: %s is failed, expected: %s, actual: %s\n", c.name, c.err, err)
 		}

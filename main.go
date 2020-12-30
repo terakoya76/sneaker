@@ -57,6 +57,7 @@ var rootCmd = &cobra.Command{
 
 func getInput(filename string) (string, error) {
 	var r io.Reader
+
 	if filename != "" {
 		f, err := os.Open(filename)
 		if err != nil {
@@ -72,5 +73,6 @@ func getInput(filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return string(t), nil
 }

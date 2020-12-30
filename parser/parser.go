@@ -24,16 +24,17 @@ const (
 func ParseCrontab(crontabs string) []*Expression {
 	result := []*Expression{}
 	lines := strings.Split(crontabs, "\n")
+
 	for _, line := range lines {
 		if filterNonExpression(line) {
 			items := strings.Fields(line)
 			exp := Expression{
-				min:   items[0],
-				hour:  items[1],
-				day:   items[2],
-				month: items[3],
-				wday:  items[4],
-				cmd:   strings.Join(items[5:], " "),
+				Min:   items[0],
+				Hour:  items[1],
+				Day:   items[2],
+				Month: items[3],
+				Wday:  items[4],
+				Cmd:   strings.Join(items[5:], " "),
 			}
 			result = append(result, &exp)
 		}
@@ -54,8 +55,7 @@ func filterNonExpression(line string) bool {
 	return true
 }
 
-// NOTE:
-// currently not support wday execution schedule
+// NOTE: currently not support wday execution schedule.
 type ExecutionSchedule MonthlySchedule
 type MonthlySchedule []DailySchedule
 type DailySchedule []HourlySchedule
@@ -105,6 +105,7 @@ func (mons MonthlySchedule) String() string {
 
 		slice := strings.Split(mon.String(), "\n")
 		slice = slice[0 : len(slice)-1]
+
 		for _, str := range slice {
 			fmt.Fprintf(&b, "%s ", enum.Month(l))
 			fmt.Fprintln(&b, str)
@@ -124,6 +125,7 @@ func (ds DailySchedule) String() string {
 
 		slice := strings.Split(d.String(), "\n")
 		slice = slice[0 : len(slice)-1]
+
 		for _, str := range slice {
 			fmt.Fprintf(&b, "%02d, ", k)
 			fmt.Fprintln(&b, str)
@@ -138,6 +140,7 @@ func (hs HourlySchedule) String() string {
 
 	for j, h := range hs {
 		fmt.Fprintf(&b, "%02dH: ", j)
+
 		for _, m := range h {
 			if m {
 				fmt.Fprint(&b, "■")
@@ -145,6 +148,7 @@ func (hs HourlySchedule) String() string {
 				fmt.Fprint(&b, "□")
 			}
 		}
+
 		fmt.Fprint(&b, "\n")
 	}
 
@@ -152,31 +156,31 @@ func (hs HourlySchedule) String() string {
 }
 
 type Expression struct {
-	min   string
-	hour  string
-	day   string
-	month string
-	wday  string
-	cmd   string
+	Min   string
+	Hour  string
+	Day   string
+	Month string
+	Wday  string
+	Cmd   string
 }
 
 func (e *Expression) Evaluate(schedule ExecutionSchedule) (ExecutionSchedule, error) {
-	mons, err := EvaluateItem(MaxMonthes, e.month)
+	mons, err := EvaluateItem(MaxMonthes, e.Month)
 	if err != nil {
 		return schedule, err
 	}
 
-	ds, err := EvaluateItem(MaxDays, e.day)
+	ds, err := EvaluateItem(MaxDays, e.Day)
 	if err != nil {
 		return schedule, err
 	}
 
-	hs, err := EvaluateItem(MaxHours, e.hour)
+	hs, err := EvaluateItem(MaxHours, e.Hour)
 	if err != nil {
 		return schedule, err
 	}
 
-	ms, err := EvaluateItem(MaxMins, e.min)
+	ms, err := EvaluateItem(MaxMins, e.Min)
 	if err != nil {
 		return schedule, err
 	}
@@ -202,6 +206,7 @@ func EvaluateItem(max int, item string) ([]int, error) {
 
 	all := false
 	parts := strings.Split(item, ",")
+
 	for _, part := range parts {
 		arr := strings.Split(part, "/")
 		switch len(arr) {
@@ -240,6 +245,7 @@ func EvaluateItem(max int, item string) ([]int, error) {
 	}
 
 	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+
 	return result, nil
 }
 
@@ -248,6 +254,7 @@ func evaluteAll(max int) ([]int, error) {
 	for i := 0; i <= max; i++ {
 		all[i] = i
 	}
+
 	return all, nil
 }
 
@@ -278,10 +285,12 @@ func evaluteRange(max int, item string) ([]int, error) {
 	}
 
 	rng := []int{}
+
 	for i := begin; i <= end; i++ {
 		if i >= max+1 {
 			return []int{}, fmt.Errorf("%s", "given number is exceeded the max threshold")
 		}
+
 		rng = append(rng, i)
 	}
 
@@ -295,11 +304,13 @@ func evaluteStep(max int, numerator, denominator string) ([]int, error) {
 	}
 
 	var rng []int
+
 	if numerator == "*" {
 		r, err := evaluteRange(max, fmt.Sprintf("0-%d", max))
 		if err != nil {
 			return []int{}, err
 		}
+
 		rng = r
 	} else if strings.Contains(numerator, "-") {
 		r, err := evaluteRange(max, numerator)
