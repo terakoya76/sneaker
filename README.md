@@ -1,5 +1,6 @@
 # sneaker
 ![test](https://github.com/terakoya76/sneaker/workflows/test/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/terakoya76/sneaker/badge.svg?branch=master)](https://coveralls.io/github/terakoya76/sneaker?branch=master)
 
 Cron execution schedule visualizer
 
