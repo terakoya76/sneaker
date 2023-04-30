@@ -10,11 +10,10 @@ jobs:
   build:
     strategy:
       matrix:
-        go: [1.15, 1.16, 1.17]
-        os: [ubuntu-18.04, ubuntu-20.04]
+        go: ["1.18", "1.19", "1.20"]
 
     name: all
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
@@ -45,11 +44,11 @@ jobs:
       with:
         infile: coverage.out
         outfile: coverage.lcov
-      if: "matrix.os == 'ubuntu-20.04' && matrix.go == 1.17"
+      if: "matrix.go == 1.20"
 
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.github_token }}
         path-to-lcov: coverage.lcov
-      if: "matrix.os == 'ubuntu-20.04' && matrix.go == 1.17"
+      if: "matrix.go == 1.20"
