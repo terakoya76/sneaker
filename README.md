@@ -4,6 +4,9 @@
 
 Cron execution schedule visualizer
 
+> **Warning**
+> This repository has been archived. Please use https://crontab-visualizer.terakoya76.dev/ instead.
+
 ## How to use
 sneaker help you to find when job processes are triggered and when not
 
